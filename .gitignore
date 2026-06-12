@@ -1,0 +1,24 @@
+# Python / Django
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+.env
+*.log
+
+# Node / Vue (Frontend)
+node_modules/
+dist/
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Docker
+*.env.local
+
+# Coverage / Testing
+.coverage
+htmlcov/
