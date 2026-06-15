@@ -50,7 +50,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     # Write field (accepts id in POST)
     investor = serializers.PrimaryKeyRelatedField(
-        queryset=get_user_model().objects.all()
+        queryset=get_user_model().objects.all(), required=False
     )
 
     class Meta:
