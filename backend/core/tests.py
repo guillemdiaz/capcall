@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -53,6 +52,7 @@ class FundAPITests(APITestCase):
             username="test_admin",
             email="admin@gmail.com",
             password="password123",
+            is_staff=True,
         )
         cls.fund = Fund.objects.create(
             fund_name="Fundcraft Tech I",
@@ -61,7 +61,7 @@ class FundAPITests(APITestCase):
             strategy="GROWTH",
         )
         cls.list_url = reverse("fund-list")
-        cls.detail_url = reverse("fund-detail", args=[cls.fund.id])
+        cls.detail_url = reverse("fund-detail", args=[cls.fund.pk])
 
     def setUp(self):
         """
@@ -146,3 +146,99 @@ class JWTAuthenticationTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class AuthorizationPermissionsTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.manager = Investor.objects.create_user(
+            username="manager", password="password123", is_staff=True
+        )
+        cls.investor1 = Investor.objects.create_user(
+            username="investor1", password="password123", investor_type="INDIVIDUAL"
+        )
+        cls.investor2 = Investor.objects.create_user(
+            username="investor2", password="password123", investor_type="ENTITY"
+        )
+        cls.fund = Fund.objects.create(
+            fund_name="Fundcraft Security I",
+            vintage_year=2026,
+            fund_size="10000000.00",
+            strategy="BUYOUT",
+        )
+        cls.sub1 = Subscription.objects.create(
+            fund=cls.fund, investor=cls.investor1, amount="50000.00"
+        )
+        cls.sub2 = Subscription.objects.create(
+            fund=cls.fund, investor=cls.investor2, amount="75000.00"
+        )
+        cls.sub_list_url = reverse("subscription-list")
+        cls.fund_detail_url = reverse("fund-detail", args=[cls.fund.pk])
+
+    def test_investor_cannot_see_other_investors_subscriptions(self):
+        """GET /subscriptions/ isolated by user via get_queryset"""
+        self.client.force_authenticate(user=self.investor1)
+        response = self.client.get(self.sub_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should only receive 1 subscription (the user's own one)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["amount"], "50000.00")
+
+    def test_fund_manager_can_see_all_subscriptions(self):
+        """GET /subscriptions/ returns all records for staff users"""
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.get(self.sub_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # The manager should see the 2 subscriptions
+        self.assertEqual(len(response.data), 2)
+
+    def test_investor_cannot_approve_kyc(self):
+        """PATCH /investors/<id>/ ignores read_only_fields like kyc_status"""
+        self.client.force_authenticate(user=self.investor1)
+        url = reverse("investor-detail", args=[self.investor1.pk])
+
+        # The investor tries to change their own KYC to APPROVED
+        response = self.client.patch(url, {"kyc_status": "APPROVED"})
+
+        # API allows editing (200 OK) because the investor is the owner...
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # ...but ignores the field because it is read_only_fields
+        self.investor1.refresh_from_db()
+        self.assertEqual(self.investor1.kyc_status, "PENDING")
+
+    def test_investor_cannot_create_subscription_for_another_investor(self):
+        """POST /subscriptions/ overrides malicious investor ID with request.user"""
+        self.client.force_authenticate(user=self.investor1)
+
+        # Investor 1 tries to subscribe Investor 2 with Investor 2's money
+        malicious_data = {
+            "fund": "Fundcraft Security I",
+            "amount": "100000.00",
+            "investor": self.investor2.pk,
+        }
+        response = self.client.post(self.sub_list_url, malicious_data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verifies the backend has intercepted the ID and assigned the subscription to
+        # Investor 1
+        new_sub = Subscription.objects.get(id=response.data["id"])
+        self.assertEqual(new_sub.investor, self.investor1)
+
+    def test_investor_gets_404_when_accessing_other_investor_profile(self):
+        """GET /investors/<other_id>/ returns 404 due to queryset isolation"""
+        self.client.force_authenticate(user=self.investor1)
+        url = reverse("investor-detail", args=[self.investor2.pk])
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_investor_cannot_delete_fund(self):
+        """DELETE /funds/<id>/ is blocked by IsFundManager permission"""
+        self.client.force_authenticate(user=self.investor1)
+
+        response = self.client.delete(self.fund_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
