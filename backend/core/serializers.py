@@ -38,7 +38,7 @@ class InvestorSerializer(serializers.ModelSerializer):
             "country",
         )
         model = Investor
-        read_only_fields = "kyc_status"
+        read_only_fields = ["kyc_status"]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -50,7 +50,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     # Write field (accepts id in POST)
     investor = serializers.PrimaryKeyRelatedField(
-        queryset=get_user_model().objects.all()
+        queryset=get_user_model().objects.all(), required=False
     )
 
     class Meta:
