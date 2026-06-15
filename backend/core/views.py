@@ -19,6 +19,8 @@ class FundViewSet(viewsets.ModelViewSet):
 
 
 class InvestorViewSet(viewsets.ModelViewSet):
+    queryset = get_user_model().objects.all()
+
     def get_queryset(self):
         is_manager = getattr(self.request.user, "is_staff", False)
 
@@ -41,6 +43,8 @@ class InvestorViewSet(viewsets.ModelViewSet):
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
+    queryset = Subscription.objects.all()
+
     def get_queryset(self):
         is_manager = getattr(self.request.user, "is_staff", False)
 

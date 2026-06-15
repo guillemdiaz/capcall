@@ -22,3 +22,5 @@ dist/
 # Coverage / Testing
 .coverage
 htmlcov/
+
+schema.yml
