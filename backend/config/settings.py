@@ -1,6 +1,11 @@
 from datetime import timedelta
 from pathlib import Path
 
+import environ
+
+# Initializes django-environ
+env = environ.Env(DEBUG=(bool, False))
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -8,13 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-g!5!r1qt89iqgkdkk6fok5!!9pl&^y_-tf3!k@u$01iu6)32vn"
+# Reads the .env
+environ.Env.read_env(BASE_DIR / ".env")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+# SECURITY
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env("DEBUG")
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -29,6 +34,7 @@ INSTALLED_APPS = [
     # 3rd party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "corsheaders",
     # Local
     "core",
 ]
@@ -48,6 +54,7 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -82,11 +89,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "postgres",
-        "HOST": "db",  # set in docker-compose.yml
-        "PORT": 5432,  # default postgres port
+        "NAME": env("POSTGRES_DB", default="postgres"),
+        "USER": env("POSTGRES_USER", default="postgres"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default="postgres"),
+        "HOST": env("POSTGRES_HOST", default="db"),  # set in docker-compose.yml
+        "PORT": env("POSTGRES_PORT", default=5432),  # default postgres port
     }
 }
 
@@ -129,3 +136,12 @@ STATIC_URL = "static/"
 
 # Investor user model
 AUTH_USER_MODEL = "core.Investor"
+
+# CORS config
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
