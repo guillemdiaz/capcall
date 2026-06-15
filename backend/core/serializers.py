@@ -38,7 +38,7 @@ class InvestorSerializer(serializers.ModelSerializer):
             "country",
         )
         model = Investor
-        read_only_fields = "kyc_status"
+        read_only_fields = ["kyc_status"]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
