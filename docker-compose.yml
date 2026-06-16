@@ -16,5 +16,15 @@ services:
     environment:
       - "POSTGRES_HOST_AUTH_METHOD=trust"
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
