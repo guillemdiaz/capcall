@@ -74,9 +74,9 @@ class FundAPITests(APITestCase):
         """GET /api/v1/funds/ returns a list of all funds"""
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, list)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["fund_name"], "Fundcraft Tech I")
+        self.assertIn("results", response.data)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["fund_name"], "Fundcraft Tech I")
 
     def test_get_single_fund(self):
         """GET /api/v1/funds/<int:pk>/ returns a single fund"""
@@ -182,8 +182,8 @@ class AuthorizationPermissionsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Should only receive 1 subscription (the user's own one)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["amount"], "50000.00")
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["amount"], "50000.00")
 
     def test_fund_manager_can_see_all_subscriptions(self):
         """GET /subscriptions/ returns all records for staff users"""
@@ -192,7 +192,7 @@ class AuthorizationPermissionsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # The manager should see the 2 subscriptions
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data["results"]), 2)
 
     def test_investor_cannot_approve_kyc(self):
         """PATCH /investors/<id>/ ignores read_only_fields like kyc_status"""

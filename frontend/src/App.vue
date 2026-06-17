@@ -54,8 +54,10 @@ const fetchData = async () => {
   if (!token.value) return;
   loading.value = true;
   try {
-    funds.value = await fetchWithAuth('/funds/');
-    subscriptions.value = await fetchWithAuth('/subscriptions/');
+    const fundsData = await fetchWithAuth('/funds/');
+    const subsData = await fetchWithAuth('/subscriptions/');
+    funds.value = fundsData.results || fundsData;
+    subscriptions.value = subsData.results || subsData;
   } catch (err) {
     console.error(err);
   } finally {
