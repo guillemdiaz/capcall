@@ -242,3 +242,36 @@ class AuthorizationPermissionsTests(APITestCase):
 
         response = self.client.delete(self.fund_detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SubscriptionFilteringTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.manager = Investor.objects.create_user(
+            username="manager", password="password123", is_staff=True
+        )
+        cls.fund = Fund.objects.create(
+            fund_name="Filter Fund",
+            vintage_year=2024,
+            fund_size="1000.00",
+            strategy="BUYOUT",
+        )
+
+        cls.sub_draft = Subscription.objects.create(
+            fund=cls.fund, investor=cls.manager, amount="100.00", status="DRAFT"
+        )
+        cls.sub_submitted = Subscription.objects.create(
+            fund=cls.fund, investor=cls.manager, amount="200.00", status="SUBMITTED"
+        )
+        cls.url = reverse("subscription-list")
+
+    def test_filter_subscriptions_by_status(self):
+        """GET /subscriptions/?status=SUBMITTED returns only matching records"""
+        self.client.force_authenticate(user=self.manager)
+
+        response = self.client.get(f"{self.url}?status=SUBMITTED")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Checks that only 1 result is returned (ignores the DRAFT one)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["status"], "SUBMITTED")

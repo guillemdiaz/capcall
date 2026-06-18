@@ -10,6 +10,7 @@ const error = ref('');
 const funds = ref([]);
 const subscriptions = ref([]);
 const loading = ref(false);
+const selectedStatus = ref('');
 
 const login = async () => {
   error.value = '';
@@ -55,7 +56,11 @@ const fetchData = async () => {
   loading.value = true;
   try {
     const fundsData = await fetchWithAuth('/funds/');
-    const subsData = await fetchWithAuth('/subscriptions/');
+    let subsUrl = '/subscriptions/';
+    if (selectedStatus.value) {
+      subsUrl += `?status=${selectedStatus.value}`;
+    }
+    const subsData = await fetchWithAuth(subsUrl);
     funds.value = fundsData.results || fundsData;
     subscriptions.value = subsData.results || subsData;
   } catch (err) {
@@ -104,6 +109,19 @@ const formatAmount = (value) =>
         </div>
         <button @click="logout" class="logout-btn">Logout</button>
       </header>
+
+      <div class="filters-bar" v-if="!loading || subscriptions.length > 0">
+        <label for="status-filter">Filter Subscriptions:</label>
+        <select id="status-filter" v-model="selectedStatus" @change="fetchData">
+          <option value="">All Statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="UNDER_REVIEW">Under Review</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="FUNDED">Funded</option>
+        </select>
+      </div>
 
       <p v-if="loading" class="loading-text">Loading data from the database…</p>
 
@@ -409,5 +427,39 @@ tr:hover td { background: rgba(0, 0, 0, 0.02); }
   color: var(--red);
   font-size: 0.82rem;
   margin-top: 0.75rem;
+}
+
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.filters-bar label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.filters-bar select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.filters-bar select:focus {
+  outline: none;
+  border-color: var(--teal);
 }
 </style>
