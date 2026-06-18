@@ -64,6 +64,7 @@ flowchart TD
   validated JWT token.
 - Object-level permissions (`IsOwnerOrFundManager`) ensure that even if querysets are bypassed, users cannot mutate 
   data they do not own.
+- Authentication endpoints are rate-limited to prevent brute-force attacks. 
 
 ### How it works: Subscription lifecycle
 
@@ -105,6 +106,14 @@ Once the backend is running, you can explore all endpoints using your preferred 
 
 - Swagger UI (for interactive testing): http://localhost:8000/api/v1/schema/swagger-ui/
 - Redoc (for clean reading): http://localhost:8000/api/v1/schema/redoc/
+
+### Advanced API features
+
+The API implements two additional features for usability:
+
+* **Pagination:** All list endpoints use `PageNumberPagination` to handle large datasets efficiently.
+* **Filtering:** Key endpoints like `/subscriptions/` support query parameter filtering via `django-filter`
+  (e.g. `?status=SUBMITTED&fund=2`).
 
 ### Core business endpoints (Summary)
 
