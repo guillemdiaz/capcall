@@ -74,9 +74,9 @@ class FundAPITests(APITestCase):
         """GET /api/v1/funds/ returns a list of all funds"""
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, list)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["fund_name"], "Fundcraft Tech I")
+        self.assertIn("results", response.data)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["fund_name"], "Fundcraft Tech I")
 
     def test_get_single_fund(self):
         """GET /api/v1/funds/<int:pk>/ returns a single fund"""
@@ -182,8 +182,8 @@ class AuthorizationPermissionsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Should only receive 1 subscription (the user's own one)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["amount"], "50000.00")
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["amount"], "50000.00")
 
     def test_fund_manager_can_see_all_subscriptions(self):
         """GET /subscriptions/ returns all records for staff users"""
@@ -192,7 +192,7 @@ class AuthorizationPermissionsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # The manager should see the 2 subscriptions
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data["results"]), 2)
 
     def test_investor_cannot_approve_kyc(self):
         """PATCH /investors/<id>/ ignores read_only_fields like kyc_status"""
@@ -242,3 +242,36 @@ class AuthorizationPermissionsTests(APITestCase):
 
         response = self.client.delete(self.fund_detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SubscriptionFilteringTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.manager = Investor.objects.create_user(
+            username="manager", password="password123", is_staff=True
+        )
+        cls.fund = Fund.objects.create(
+            fund_name="Filter Fund",
+            vintage_year=2024,
+            fund_size="1000.00",
+            strategy="BUYOUT",
+        )
+
+        cls.sub_draft = Subscription.objects.create(
+            fund=cls.fund, investor=cls.manager, amount="100.00", status="DRAFT"
+        )
+        cls.sub_submitted = Subscription.objects.create(
+            fund=cls.fund, investor=cls.manager, amount="200.00", status="SUBMITTED"
+        )
+        cls.url = reverse("subscription-list")
+
+    def test_filter_subscriptions_by_status(self):
+        """GET /subscriptions/?status=SUBMITTED returns only matching records"""
+        self.client.force_authenticate(user=self.manager)
+
+        response = self.client.get(f"{self.url}?status=SUBMITTED")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Checks that only 1 result is returned (ignores the DRAFT one)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["status"], "SUBMITTED")

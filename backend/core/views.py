@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from core.models import Fund, Subscription
 from core.permissions import IsFundManager, IsOwnerOrFundManager
 from core.serializers import FundSerializer, InvestorSerializer, SubscriptionSerializer
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 class FundViewSet(viewsets.ModelViewSet):
@@ -53,6 +54,9 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         return Subscription.objects.filter(investor=self.request.user)
 
     serializer_class = SubscriptionSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["status", "fund"]
 
     def get_permissions(self):
         # Allows the investor to create their subscription
