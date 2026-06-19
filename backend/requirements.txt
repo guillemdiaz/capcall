@@ -5,4 +5,5 @@ django-environ==0.13.0
 django-cors-headers==4.9.0
 drf-spectacular==0.29.0
 django-filter==25.2
+redis>=8.0.0
 psycopg[binary]==3.3.4

@@ -11,6 +11,7 @@ services:
 
   db:
     image: postgres:16
+    container_name: capcall-db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -25,6 +26,12 @@ services:
       - /app/node_modules
     depends_on:
       - web
+
+  redis:
+    image: redis:8-alpine
+    container_name: capcall-redis
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:
