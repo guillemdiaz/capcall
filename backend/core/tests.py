@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -275,3 +276,35 @@ class SubscriptionFilteringTests(APITestCase):
         # Checks that only 1 result is returned (ignores the DRAFT one)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["status"], "SUBMITTED")
+
+
+class SecurityThrottlingTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.token_url = reverse("token_obtain_pair")
+
+    def setUp(self):
+        """
+        The cache is cleared before each test so that attempts
+        from other tests do not interfere with the throttling counter.
+        """
+        cache.clear()
+
+    def test_login_brute_force_is_throttled(self):
+        """
+        Simulates a brute-force attack on the login endpoint.
+        The 6th request within a minute should return 429 Too Many Requests.
+        """
+        # 5 login attempts (the limit set in settings.py)
+        for _ in range(5):
+            response = self.client.post(
+                self.token_url, {"username": "admin", "password": "incorrect"}
+            )
+            # Confirms that there is no blocking yet
+            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # On the 6th request throttling should jump
+        response = self.client.post(
+            self.token_url, {"username": "admin", "password": "incorrect"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

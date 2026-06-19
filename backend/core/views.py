@@ -1,11 +1,23 @@
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.models import Fund, Subscription
 from core.permissions import IsFundManager, IsOwnerOrFundManager
 from core.serializers import FundSerializer, InvestorSerializer, SubscriptionSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Overwrites the SimpleJWT login view to add a request limit
+    and prevent brute force attacks.
+    """
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
 
 class FundViewSet(viewsets.ModelViewSet):
@@ -43,6 +55,10 @@ class InvestorViewSet(viewsets.ModelViewSet):
         return [IsFundManager()]
 
 
+class SubscriptionCreateThrottle(ScopedRateThrottle):
+    scope = "subscription_create"
+
+
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
 
@@ -57,6 +73,14 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status", "fund"]
+
+    def get_throttles(self):
+        """
+        Apply a request limit only to the action of creating subscriptions.
+        """
+        if self.action == "create":
+            return [SubscriptionCreateThrottle()]
+        return super().get_throttles()
 
     def get_permissions(self):
         # Allows the investor to create their subscription

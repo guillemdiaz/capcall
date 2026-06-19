@@ -57,6 +57,9 @@ class Fund(models.Model):
     def __str__(self):
         return f"{self.fund_name} ({self.vintage_year})"
 
+    class Meta:
+        ordering = ["id"]
+
 
 class Subscription(models.Model):
     class Status(models.TextChoices):
@@ -80,3 +83,6 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.investor} -> {self.fund.fund_name} ({self.status})"
+
+    class Meta:
+        ordering = ["-created_at"]
