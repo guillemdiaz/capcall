@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -8,6 +10,8 @@ from core.models import Fund, Subscription
 from core.permissions import IsFundManager, IsOwnerOrFundManager
 from core.serializers import FundSerializer, InvestorSerializer, SubscriptionSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+
+from core.services import SubscriptionService
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -40,7 +44,7 @@ class InvestorViewSet(viewsets.ModelViewSet):
         if is_manager:
             return get_user_model().objects.filter(is_superuser=False)
         # An investor can only see their own profile
-        return get_user_model().objects.filter(id=self.request.user.id)
+        return get_user_model().objects.filter(id=self.request.user.pk)
 
     serializer_class = InvestorSerializer
 
@@ -99,3 +103,26 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             serializer.save()
         else:
             serializer.save(investor=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        """
+        Custom endpoint: POST /api/v1/subscriptions/{id}/approve/
+        Approves the subscription and triggers the Capital Call.
+        """
+        subscription = self.get_object()
+        updated_subscription, newly_approved = SubscriptionService.approve_subscription(
+            subscription
+        )
+        serializer = self.get_serializer(updated_subscription)
+        if newly_approved:
+            msg = "Subscription approved. Email is being sent in the background."
+        else:
+            msg = "Subscription was already approved. No action taken."
+        return Response(
+            {
+                "message": msg,
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
