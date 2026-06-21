@@ -1,5 +1,7 @@
 import logging
 
+from rest_framework.exceptions import ValidationError
+
 from .models import Subscription
 from .tasks import send_capital_call_email_task
 
@@ -19,6 +21,18 @@ class SubscriptionService:
         if subscription.status == "APPROVED":
             logger.warning(f"Subscription {subscription.pk} was already APPROVED.")
             return subscription, False
+
+        if subscription.status != "UNDER_REVIEW":
+            logger.error(
+                f"Attempt to approve subscription {subscription.pk} from status "
+                f"{subscription.status}"
+            )
+            raise ValidationError(
+                {
+                    "status": f"Only subscriptions that are UNDER_REVIEW can be "
+                    f"approved. The current status is {subscription.status}."
+                }
+            )
 
         subscription.status = "APPROVED"
         subscription.save(update_fields=["status"])
