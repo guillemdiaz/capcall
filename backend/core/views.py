@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -88,7 +90,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # Allows the investor to create their subscription
-        if self.action in ["list", "retrieve", "create"]:
+        if self.action in ["list", "retrieve", "create", "notice"]:
             return [IsAuthenticated()]
         return [IsFundManager()]
 
@@ -126,3 +128,21 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["get"], url_path="notice")
+    def notice(self, request, pk=None):
+        """
+        Custom endpoint: GET /api/v1/subscriptions/{id}/notice/
+        Generates and returns the Capital Call Notice in HTML so the investor
+        can read it.
+        """
+        sub = self.get_object()
+
+        context = {
+            "investor_name": sub.investor.get_full_name() or sub.investor.username,
+            "amount": f"{sub.amount:,.2f}",
+            "fund_name": sub.fund.fund_name,
+        }
+
+        html_content = render_to_string("emails/capital_call.html", context)
+        return HttpResponse(html_content)
