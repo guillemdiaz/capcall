@@ -6,13 +6,14 @@ for demonstration purposes.
 
 ## Tech stack
 
-| Component      | Technology                       |
-|----------------|----------------------------------|
-| Frontend       | Vue 3 + Vite                     |
-| Backend        | Django + Django REST Framework   |
-| Database       | PostgreSQL 16                    |
-| Security       | SimpleJWT + CORS/CSRF Middleware |
-| Infrastructure | Docker + Docker Compose          |
+| Component        | Technology                       |
+|------------------|----------------------------------|
+| Frontend         | Vue 3 + Vite                     |
+| Backend          | Django + Django REST Framework   |
+| Database         | PostgreSQL 16                    |
+| Background Jobs  | Celery + Redis                   |
+| Security         | SimpleJWT + CORS/CSRF Middleware |
+| Infrastructure   | Docker + Docker Compose          |
 
 ## Business logic
 
@@ -33,13 +34,19 @@ flowchart TD
     subgraph Security["Security & Auth Layer"]
         JWT["SimpleJWT\nAccess (15m) & Refresh (7d)"]
         Permissions["Role-based Permissions\nIsFundManager / IsOwnerOrFundManager"]
-        QuerySet["Dynamic QuerySets\nTenant-like Isolation"]
+        QuerySet["Dynamic QuerySets\nData Isolation per Role"]
     end
 
-    subgraph Controllers["DRF ViewSets"]
+    subgraph Controllers["DRF ViewSets & Services"]
         AuthView["Auth Token Endpoints\n/api/v1/auth/"]
         FundView["FundViewSet\nRead-only for LPs"]
-        SubView["SubscriptionViewSet\nperform_create injection"]
+        SubView["SubscriptionViewSet\nperform_create & custom actions"]
+        ServiceLayer["SubscriptionService\nBusiness logic & State machine"]
+    end
+
+    subgraph AsyncLayer["Background Processing"]
+        RedisBroker[("Redis Broker")]
+        CeleryWorker["Celery Worker\n(Email generation)"]
     end
 
     subgraph DatabaseLayer["PostgreSQL"]
@@ -52,7 +59,10 @@ flowchart TD
     QuerySet --> FundView
     QuerySet --> SubView
     FundView ==> DB
-    SubView ==> DB
+    SubView --> ServiceLayer
+    ServiceLayer ==> DB
+    ServiceLayer -- ".delay()" --> RedisBroker
+    RedisBroker --> CeleryWorker
 ```
 
 ### Key security features
@@ -65,6 +75,11 @@ flowchart TD
 - Object-level permissions (`IsOwnerOrFundManager`) ensure that even if querysets are bypassed, users cannot mutate 
   data they do not own.
 - Authentication endpoints are rate-limited to prevent brute-force attacks. 
+- The Service Layer prevents illegal state transitions (e.g., skipping
+  `UNDER_REVIEW` to go straight to `APPROVED`).
+- Institutional documents (like Capital Call notices) are served via an authenticated endpoint (`/notice/`) that 
+  validates the JWT and `get_queryset` permissions.
+- JWT tokens are stored in `sessionStorage` and cleared automatically when the tab is closed.
 
 ### How it works: Subscription lifecycle
 
@@ -91,8 +106,13 @@ sequenceDiagram
     alt KYC Fails
         Mgr->>API: PATCH /subscriptions/{id} (status: REJECTED)
     else KYC Passes
-        Mgr->>API: PATCH /subscriptions/{id} (status: APPROVED)
+        Mgr->>API: POST /subscriptions/{id}/approve/
+        API->>DB: Update status to APPROVED
+        API-)Celery: Trigger async email task
+        Celery-->>LP: Send HTML Capital Call Notice
+        
         Note over LP,DB: 3. Capital call & Funding
+        LP->>API: GET /subscriptions/{id}/notice/ (View secure document)
         LP->>API: (Transfers real money offline)
         Mgr->>API: PATCH /subscriptions/{id} (status: FUNDED)
         API->>DB: Update status & update Fund called_capital
@@ -111,20 +131,22 @@ Once the backend is running, you can explore all endpoints using your preferred 
 
 The API implements two additional features for usability:
 
-* **Pagination:** All list endpoints use `PageNumberPagination` to handle large datasets efficiently.
-* **Filtering:** Key endpoints like `/subscriptions/` support query parameter filtering via `django-filter`
-  (e.g. `?status=SUBMITTED&fund=2`).
+* **Pagination:** All list endpoints use `PageNumberPagination`.
+* **Filtering:** Key endpoints support query parameter filtering via `django-filter` (e.g. `?status=SUBMITTED&fund=2`).
+* **Async Processing:** Capital Call emails are sent asynchronously via Celery and Redis.
+* **Service Layer:** Business logic and state machine validations are decoupled from ViewSets into service classes, 
+  which simplifies unit testing.
 
 ### Core business endpoints (Summary)
 
 For a quick overview, these are the main endpoints that drive the application's core logic:
 
-| Resource          | Endpoints                                  | Description                                                                     |
-|:------------------|:-------------------------------------------|:--------------------------------------------------------------------------------|
-| **Auth**          | `POST /api/v1/auth/token/*`                | JWT authentication (login, refresh, verify, blacklist).                         |
-| **Funds**         | `GET, POST, PATCH /api/v1/funds/*`         | Fund catalog. Read-only for LPs & full CRUD for Managers.                       |
-| **Investors**     | `GET, PATCH /api/v1/investors/*`           | Investor KYC profiles. Isolated visibility per user.                            |
-| **Subscriptions** | `GET, POST, PATCH /api/v1/subscriptions/*` | The core lifecycle. Investors create DRAFTs and Managers approve and fund them. |
+| Resource          | Endpoints                                                                                     | Description                                                                     |
+|:------------------|:----------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------|
+| **Auth**          | `POST /api/v1/auth/token/*`                                                                   | JWT authentication (login, refresh, verify, blacklist).                         |
+| **Funds**         | `GET, POST, PATCH /api/v1/funds/*`                                                            | Fund catalog. Read-only for LPs & full CRUD for Managers.                       |
+| **Investors**     | `GET, PATCH /api/v1/investors/*`                                                              | Investor KYC profiles. Isolated visibility per user.                            |
+| **Subscriptions** | `GET, POST, PATCH /subscriptions/*` <br> `POST .../{id}/approve/` <br> `GET .../{id}/notice/` | The core lifecycle. Investors create DRAFTs, Managers approve them (triggering async emails), and Investors fetch secure notices. |
 
 ## Getting started
 

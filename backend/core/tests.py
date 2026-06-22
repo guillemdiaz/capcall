@@ -1,10 +1,15 @@
+from unittest.mock import patch
+
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 from .models import Investor, Fund, Subscription
 from rest_framework.test import APITestCase
+
+from .services import SubscriptionService
 
 
 class CoreDomainTests(TestCase):
@@ -308,3 +313,66 @@ class SecurityThrottlingTests(APITestCase):
             self.token_url, {"username": "admin", "password": "incorrect"}
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class SubscriptionServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.investor = Investor.objects.create_user(
+            username="investor1", email="investor@gmail.com", password="password123"
+        )
+        cls.fund = Fund.objects.create(
+            fund_name="Test Fund",
+            vintage_year=2026,
+            fund_size=1000.00,
+            strategy="BUYOUT",
+        )
+
+    # @patch replaces the real Celery task with a mock to avoid sending real emails
+    # during tests
+    @patch("core.services.send_capital_call_email_task.delay")
+    def test_approve_valid_subscription(self, mock_delay):
+        """Approving a subscription in UNDER_REVIEW works and sends the email."""
+        sub = Subscription.objects.create(
+            fund=self.fund, investor=self.investor, amount=100.00, status="UNDER_REVIEW"
+        )
+
+        updated_sub, newly_approved = SubscriptionService.approve_subscription(sub)
+
+        self.assertTrue(newly_approved)
+        self.assertEqual(updated_sub.status, "APPROVED")
+        # Asserts the task was queued exactly once with the correct subscription ID
+        mock_delay.assert_called_once_with(sub.pk)
+
+    @patch("core.services.send_capital_call_email_task.delay")
+    def test_approve_already_approved_subscription(self, mock_delay):
+        """
+        Approving an already APPROVED subscription is ignored and doesn't send an email.
+        """
+        sub = Subscription.objects.create(
+            fund=self.fund, investor=self.investor, amount=100.00, status="APPROVED"
+        )
+
+        updated_sub, newly_approved = SubscriptionService.approve_subscription(sub)
+
+        self.assertFalse(newly_approved)
+        self.assertEqual(updated_sub.status, "APPROVED")
+        # Asserts no task was queued (no duplicate emails)
+        mock_delay.assert_not_called()
+
+    @patch("core.services.send_capital_call_email_task.delay")
+    def test_approve_invalid_status_subscription(self, mock_delay):
+        """
+        Approving a subscription that is not UNDER_REVIEW throws a validation error.
+        """
+        sub = Subscription.objects.create(
+            fund=self.fund, investor=self.investor, amount=100.00, status="DRAFT"
+        )
+
+        with self.assertRaises(ValidationError):
+            SubscriptionService.approve_subscription(sub)
+
+        # Checks nothing has changed in the database
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "DRAFT")
+        mock_delay.assert_not_called()

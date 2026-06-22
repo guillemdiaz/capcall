@@ -1,0 +1,27 @@
+ATTENTION - CAPITAL CALL NOTICE - ACTION REQUIRED
+
+Dear {{ investor_name }}:
+
+We are writing to notify you that pursuant to the Amended and Restated Limited Partnership Agreement of the Fund (the
+"Partnership Agreement"), the Fund is calling capital from you in the amount of {{ amount }} € (the "Capital Contribution").
+
+Such Capital Contribution is due on or before 5 business days from the date of this notice and must be wired in
+immediately available funds to the Fund's account as specified below.
+
+This letter constitutes a Drawdown Notice pursuant to the Partnership Agreement. The wire instructions are as follows:
+
+Name of Bank: CapCall Global Bank
+SWIFT Code: CCGBXXXX
+Account: ESXX XXXX XXXX XXXX XXXX
+
+Please instruct the financial institution handling the wire transfer to include your name, as a Limited Partner of the
+Fund, on the wire transfer.
+
+The purpose(s) of the Capital Contribution required above is (are) as follows:
+To be applied toward an investment by the Partnership in the {{ fund_name }}.
+
+If you should have any questions regarding this information, please feel free to contact us.
+
+Sincerely,
+
+CapCall Operations

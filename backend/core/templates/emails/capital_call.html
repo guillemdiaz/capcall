@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #208e8d;
+            color: #ffffff;
+            padding: 28px 32px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .brand-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-tag {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #96b706;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .alert-banner {
+            background-color: #fef3c7;
+            color: #b45309;
+            padding: 10px 32px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .content {
+            padding: 32px;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+
+        .content p {
+            margin: 0 0 16px;
+        }
+
+        .content p {
+            margin: 0 0 16px;
+            text-align: justify;
+        }
+
+        .details-box {
+            background-color: #f1f5f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+
+        .details-box p {
+            margin: 6px 0;
+            font-size: 0.875rem;
+        }
+
+        .wire-instructions {
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            margin-top: 16px;
+            border-radius: 8px;
+        }
+
+        .wire-instructions p {
+            margin: 4px 0;
+            font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #1e293b;
+        }
+
+        .amount {
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .footer {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-align: center;
+            padding: 20px 32px;
+            border-top: 1px solid #e2e8f0;
+            background-color: #f1f5f9;
+        }
+
+        .footer p {
+            margin: 4px 0;
+        }
+    </style>
+    <title>Capital Call Notice</title>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <span class="brand-name">CapCall</span>
+        <span class="brand-tag">Investor Portal</span>
+    </div>
+    <div class="alert-banner">
+        Action Required - Capital Call Notice
+    </div>
+    <div class="content">
+        <p>Dear <strong>{{ investor_name }}</strong>,</p>
+        <p>We are writing to notify you that pursuant to the Amended and Restated Limited Partnership Agreement of the
+            Fund (the "Partnership Agreement"), the Fund is calling capital from you in the amount of <span
+                    class="amount">{{ amount }} €</span> (the "Capital Contribution").</p>
+        <p>Such Capital Contribution is due on or before <strong>5 business days</strong> from the date of this notice
+            and must be wired in immediately available funds to the Fund's account as specified below.</p>
+
+        <div class="details-box">
+            <p><strong>Purpose of Capital Contribution</strong></p>
+            <p>To be applied toward an investment by the Partnership in the <strong>{{ fund_name }}</strong>.</p>
+        </div>
+
+        <p>This letter constitutes a Drawdown Notice pursuant to the Partnership Agreement. The wire instructions are as
+            follows:</p>
+
+        <div class="wire-instructions">
+            <p><strong>Name of Bank:</strong> CapCall Global Bank</p>
+            <p><strong>SWIFT Code:</strong> CCGBXXXX</p>
+            <p><strong>Account:</strong> ESXX XXXX XXXX XXXX XXXX</p>
+        </div>
+
+        <p style="margin-top: 20px;"><em>Please instruct the financial institution handling the wire transfer to include
+            your name, as a Limited Partner of the Fund, on the wire transfer.</em></p>
+        <p>If you should have any questions regarding this information, please feel free to contact us.</p>
+        <p>Sincerely,<br><strong>CapCall Operations</strong></p>
+    </div>
+    <div class="footer">
+        <p>This is an automated message generated by the CapCall Private Equity Platform.</p>
+        <p>© 2026 CapCall. All Rights Reserved.</p>
+    </div>
+</div>
+</body>
+</html>

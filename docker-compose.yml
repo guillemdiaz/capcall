@@ -11,6 +11,7 @@ services:
 
   db:
     image: postgres:16
+    container_name: capcall-db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -25,6 +26,34 @@ services:
       - /app/node_modules
     depends_on:
       - web
+
+  redis:
+    image: redis:8-alpine
+    container_name: capcall-redis
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: ./backend
+    container_name: capcall-celery
+    command: watchfiles --filter python "celery -A config worker -l INFO"
+    volumes:
+      - ./backend:/code
+    depends_on:
+      - redis
+      - db
+
+  flower:
+    build: ./backend
+    container_name: capcall-flower
+    command: celery -A config flower --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./backend:/code
+    depends_on:
+      - redis
+      - celery
 
 volumes:
   postgres_data:
